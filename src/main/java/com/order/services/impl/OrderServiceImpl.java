@@ -6,6 +6,7 @@ import com.order.model.Request;
 import com.order.model.RequestStatus;
 import com.order.model.ServiceName;
 import com.order.repository.RequestRepository;
+import com.order.services.EmailService;
 import com.order.services.OrderService;
 import com.order.utils.ServiceUtils;
 import org.slf4j.Logger;
@@ -21,9 +22,11 @@ public class OrderServiceImpl implements OrderService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final RequestRepository requestRepository;
+    private final EmailService emailService;
 
-    public OrderServiceImpl(RequestRepository requestRepository) {
+    public OrderServiceImpl(RequestRepository requestRepository, EmailService emailService) {
         this.requestRepository = requestRepository;
+        this.emailService = emailService;
     }
 
     @Override
@@ -54,8 +57,16 @@ public class OrderServiceImpl implements OrderService {
         newRequest.setServiceName(ServiceName.valueOf(serviceRequest.getServiceName().toUpperCase()));
         Double serviceCharge = ServiceUtils.calculateServiceCharge(serviceRequest.getDuration(), serviceRequest.getServiceName().toUpperCase());
         newRequest.setCost(serviceCharge);
+
         logger.info("Saving new service request");
         requestRepository.save(newRequest);
+        try{
+
+            emailService.sendEmail(serviceRequest.getRequesterName(), serviceRequest.getServiceName().toUpperCase(), newRequest.getResumptionTime().toString());
+            logger.info("Sending email notification to admin 📤📤📤");
+        }catch (Exception ex) {
+            ex.printStackTrace();
+        }
         Map<String, String> response = new HashMap<>();
         response.put("message", "Request received. Processing request......");
         response.put("Service Charge", "Your service costs " + serviceCharge);
@@ -81,7 +92,7 @@ public class OrderServiceImpl implements OrderService {
         if(updateRequest.getServiceName() != null){
             request.setServiceName(ServiceName.valueOf(updateRequest.getServiceName().toUpperCase()));
         }
-        logger.info("Updating request");
+        logger.info("Updating request.....");
         requestRepository.save(request);
     }
 
